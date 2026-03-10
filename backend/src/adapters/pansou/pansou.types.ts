@@ -12,9 +12,9 @@ export interface PanSouSearchItem {
 export interface PanSouSearchResponse {
   code: number;
   message: string;
-  data: {
-    total: number;
-    merged_by_type: Record<string, PanSouSearchItem[]>;
+  data?: {
+    total?: number;
+    merged_by_type?: Record<string, PanSouSearchItem[]>;
   };
 }
 

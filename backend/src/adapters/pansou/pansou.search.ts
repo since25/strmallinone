@@ -17,7 +17,7 @@ export class PanSouSearchService {
       cloud_types: ['115'],
     });
 
-    const items = response.data.merged_by_type['115'] ?? [];
+    const items = response.data?.merged_by_type?.['115'] ?? [];
     return items
       .map((item) => mapPanSouSearchItem(item, mediaType))
       .filter((item): item is ResourceDto => item !== null);

@@ -268,6 +268,7 @@ SSE 日志流，事件：
 - 映射为统一 DTO 后与 CloudSaver 结果按 `shareCode + receiveCode` 去重
 - 转存不走 PanSou，PanSou 只负责补充搜索结果
 - PanSou 来源可能包含已失效分享，真实能否转存仍以 CloudSaver `share-info` 校验结果为准
+- PanSou 返回 `data` 为空或接口异常时，会自动降级为只使用 CloudSaver 搜索结果
 
 ### CloudSaver 115 转存
 

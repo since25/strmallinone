@@ -11,10 +11,21 @@ export class SearchService {
   ) {}
 
   async search(keyword: string, driver: string, mediaType: MediaType): Promise<ResourceDto[]> {
-    const [cloudSaverResources, panSouResources] = await Promise.all([
+    const [cloudSaverResult, panSouResult] = await Promise.allSettled([
       this.cloudSaverSearchService.search(keyword, driver, mediaType),
       this.panSouSearchService.search(keyword, mediaType),
     ]);
+
+    if (cloudSaverResult.status === 'rejected') {
+      throw cloudSaverResult.reason;
+    }
+
+    if (panSouResult.status === 'rejected') {
+      console.warn(`PanSou search failed for keyword "${keyword}":`, panSouResult.reason);
+    }
+
+    const cloudSaverResources = cloudSaverResult.value;
+    const panSouResources = panSouResult.status === 'fulfilled' ? panSouResult.value : [];
 
     const merged = new Map<string, ResourceDto>();
     [...cloudSaverResources, ...panSouResources].forEach((resource) => {
