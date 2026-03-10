@@ -5,6 +5,9 @@ backend/dist
 backend/data
 data
 *.log
+.DS_Store
+**/.DS_Store
+strm_webhook
 .env
 backend/.env
 frontend/.env
