@@ -1,0 +1,10 @@
+node_modules
+dist
+frontend/dist
+backend/dist
+backend/data
+data
+*.log
+.env
+backend/.env
+frontend/.env
