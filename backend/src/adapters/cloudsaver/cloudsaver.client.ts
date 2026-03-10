@@ -1,16 +1,18 @@
 import { env } from '../../config/env';
+import { CloudSaverAuthService } from './cloudsaver.auth';
 
 export class CloudSaverClient {
-  private buildHeaders(extraHeaders?: Record<string, string>): Record<string, string> {
+  constructor(private readonly authService: CloudSaverAuthService) {}
+
+  private async buildHeaders(extraHeaders?: Record<string, string>, forceRefresh = false): Promise<Record<string, string>> {
     const headers: Record<string, string> = {
       Accept: 'application/json, text/plain, */*',
       ...extraHeaders,
     };
 
-    if (env.CLOUDSAVER_AUTH_TOKEN) {
-      headers.Authorization = env.CLOUDSAVER_AUTH_TOKEN.startsWith('Bearer ')
-        ? env.CLOUDSAVER_AUTH_TOKEN
-        : `Bearer ${env.CLOUDSAVER_AUTH_TOKEN}`;
+    const authHeader = await this.authService.getAuthorizationHeader(forceRefresh);
+    if (authHeader) {
+      headers.Authorization = authHeader;
     }
     if (env.CLOUDSAVER_COOKIE) {
       headers.Cookie = env.CLOUDSAVER_COOKIE.startsWith('MoviePilot=')
@@ -27,18 +29,18 @@ export class CloudSaverClient {
     return headers;
   }
 
-  async get<T>(path: string, query?: Record<string, string | number | undefined>): Promise<T> {
-    const url = new URL(path, env.CLOUDSAVER_BASE_URL);
-    Object.entries(query ?? {}).forEach(([key, value]) => {
-      if (value !== undefined) {
-        url.searchParams.set(key, String(value));
-      }
+  private async request<T>(url: URL, init: RequestInit): Promise<T> {
+    let response = await fetch(url, {
+      ...init,
+      headers: await this.buildHeaders(init.headers as Record<string, string> | undefined),
     });
 
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: this.buildHeaders(),
-    });
+    if (response.status === 401 && env.CLOUDSAVER_USERNAME && env.CLOUDSAVER_PASSWORD) {
+      response = await fetch(url, {
+        ...init,
+        headers: await this.buildHeaders(init.headers as Record<string, string> | undefined, true),
+      });
+    }
 
     if (!response.ok) {
       throw new Error(`CloudSaver request failed with status ${response.status}`);
@@ -47,17 +49,21 @@ export class CloudSaverClient {
     return (await response.json()) as T;
   }
 
+  async get<T>(path: string, query?: Record<string, string | number | undefined>): Promise<T> {
+    const url = new URL(path, env.CLOUDSAVER_BASE_URL);
+    Object.entries(query ?? {}).forEach(([key, value]) => {
+      if (value !== undefined) {
+        url.searchParams.set(key, String(value));
+      }
+    });
+    return this.request<T>(url, { method: 'GET' });
+  }
+
   async post<T>(path: string, body: Record<string, unknown>): Promise<T> {
-    const response = await fetch(new URL(path, env.CLOUDSAVER_BASE_URL), {
+    return this.request<T>(new URL(path, env.CLOUDSAVER_BASE_URL), {
       method: 'POST',
-      headers: this.buildHeaders({ 'Content-Type': 'application/json' }),
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
-
-    if (!response.ok) {
-      throw new Error(`CloudSaver request failed with status ${response.status}`);
-    }
-
-    return (await response.json()) as T;
   }
 }

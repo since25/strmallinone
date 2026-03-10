@@ -2,6 +2,7 @@ import cors from 'cors';
 import express from 'express';
 import { env } from './config/env';
 import './db/database';
+import { CloudSaverAuthService } from './adapters/cloudsaver/cloudsaver.auth';
 import { CloudSaverClient } from './adapters/cloudsaver/cloudsaver.client';
 import { CloudSaverSearchService } from './adapters/cloudsaver/cloudsaver.search';
 import { CloudSaverTransfer115Service } from './adapters/cloudsaver/cloudsaver.transfer115';
@@ -24,7 +25,7 @@ const app = express();
 app.use(cors({ origin: env.FRONTEND_ORIGIN }));
 app.use(express.json());
 
-const cloudSaverClient = new CloudSaverClient();
+const cloudSaverClient = new CloudSaverClient(new CloudSaverAuthService());
 const panSouClient = new PanSouClient();
 const searchHistoryRepository = new SearchHistoryRepository();
 const taskRepository = new TaskRepository();

@@ -96,9 +96,12 @@ strmallinone/
 ```env
 CLOUDSAVER_BASE_URL=http://192.168.70.120:8008
 CLOUDSAVER_SEARCH_PATH=/api/search
+CLOUDSAVER_LOGIN_PATH=/api/user/login
 CLOUDSAVER_115_SHARE_INFO_PATH=/api/cloud115/share-info
 CLOUDSAVER_115_FOLDERS_PATH=/api/cloud115/folders
 CLOUDSAVER_115_SAVE_PATH=/api/cloud115/save
+CLOUDSAVER_USERNAME=
+CLOUDSAVER_PASSWORD=
 CLOUDSAVER_AUTH_TOKEN=
 CLOUDSAVER_COOKIE=
 CLOUDSAVER_USER_AGENT=
@@ -117,6 +120,8 @@ STRM_ALIST_BASE_PATH=/115
 说明：
 
 - `backend/.env` 已按 `docs/cloudsaver.md` 提供的 curl 填入真实 CloudSaver 地址和鉴权信息
+- 如果提供 `CLOUDSAVER_USERNAME` / `CLOUDSAVER_PASSWORD`，后端会自动调用 `POST /api/user/login` 获取 Bearer token
+- 自动登录模式下，请求遇到 `401` 会自动重新登录并重试一次
 - `PANSOU_ENABLED=true` 时会把 `PanSou` 的 `115` 搜索结果合并到当前搜索列表
 - `STRM_WEBHOOK_URL` 已切到 `http://192.168.70.120:9527/webhook/strm`
 - 搜索仍然只展示 `pan115/115` 资源，转存与 STRM 仍然只走 CloudSaver 链路

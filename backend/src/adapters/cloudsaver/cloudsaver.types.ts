@@ -37,6 +37,15 @@ export interface CloudSaverSearchResponse {
   message: string;
 }
 
+export interface CloudSaverLoginResponse {
+  success: boolean;
+  code: number;
+  data?: {
+    token?: string;
+  };
+  message: string;
+}
+
 export interface CloudSaverShareFileItem {
   fileId: string;
   fileName: string;
