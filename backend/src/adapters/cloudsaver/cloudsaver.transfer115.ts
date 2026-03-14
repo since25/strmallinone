@@ -154,6 +154,8 @@ export class CloudSaverTransfer115Service {
         message: 'Mock 115 transfer success',
         data: {
           savePath: `/115/${resource.title}`,
+          sourceName: resource.title,
+          savedName: resource.title,
           fileCount: 1,
           transferId: nanoid(12),
         },
@@ -208,6 +210,8 @@ export class CloudSaverTransfer115Service {
       message: duplicate ? '115 文件已存在，跳过重复接收' : '115 转存成功',
       data: {
         savePath: buildCloudSaverSavePath(targetFolder, savedName),
+        sourceName: primaryFile.fileName,
+        savedName,
         fileCount: shareFiles.length,
         transferId: nanoid(12),
         duplicate,

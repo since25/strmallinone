@@ -97,6 +97,8 @@ export interface CloudSaverTransferResult {
   message: string;
   data?: {
     savePath: string;
+    sourceName: string;
+    savedName: string;
     fileCount: number;
     transferId: string;
     duplicate?: boolean;

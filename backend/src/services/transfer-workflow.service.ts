@@ -44,6 +44,11 @@ export class TransferWorkflowService {
         strmStatus: 'pending',
       });
       this.taskLogService.append(taskId, 'success', `115 转存成功: ${transferResult.data.savePath}`);
+      this.taskLogService.append(
+        taskId,
+        'info',
+        `115 保存名称解析: ${transferResult.data.sourceName} -> ${transferResult.data.savedName}`,
+      );
       this.taskLogService.append(taskId, 'info', '开始调用 strmwebhook');
 
       const strmResult = await this.strmWebhookClient.generateStrm({
