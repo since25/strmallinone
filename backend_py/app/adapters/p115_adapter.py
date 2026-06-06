@@ -28,6 +28,9 @@ def item_id(item: dict) -> str:
 
 
 def folder_id_from_response(resp: dict) -> str:
+    top_level_value = resp.get("file_id") or resp.get("fid") or resp.get("cid") or resp.get("id")
+    if top_level_value:
+        return str(top_level_value)
     data = resp.get("data") or {}
     if isinstance(data, dict):
         value = data.get("file_id") or data.get("fid") or data.get("cid") or data.get("id")
