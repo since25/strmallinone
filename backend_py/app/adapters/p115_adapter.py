@@ -27,6 +27,14 @@ def item_id(item: dict) -> str:
     return str(value or "")
 
 
+def folder_id_from_response(resp: dict) -> str:
+    data = resp.get("data") or {}
+    if isinstance(data, dict):
+        value = data.get("file_id") or data.get("fid") or data.get("cid") or data.get("id")
+        return str(value or "")
+    return ""
+
+
 def item_is_dir(item: dict) -> bool:
     return bool(item.get("is_dir") or item.get("fc") == "0" or item.get("ico") == "folder")
 
@@ -61,6 +69,23 @@ class P115TransferAdapter:
                     return folder_id
         raise RuntimeError(f"未找到目标目录: {folder_name}")
 
+    def create_target_folder(self, folder_name: str) -> str:
+        resp = self.client.fs_mkdir(folder_name, pid=0)
+        if not ok_response(resp):
+            raise RuntimeError(str(resp.get("message") or resp.get("error") or f"创建目标目录失败: {folder_name}"))
+        folder_id = folder_id_from_response(resp)
+        if folder_id:
+            return folder_id
+        return self.find_target_folder(folder_name)
+
+    def ensure_target_folder(self, folder_name: str) -> str:
+        try:
+            return self.find_target_folder(folder_name)
+        except RuntimeError as exc:
+            if str(exc) != f"未找到目标目录: {folder_name}":
+                raise
+            return self.create_target_folder(folder_name)
+
     def first_share_file(self, share_code: str, receive_code: str) -> dict:
         resp = self.client.share_snap({"share_code": share_code, "receive_code": receive_code, "cid": 0, "limit": 32})
         if not ok_response(resp):
@@ -78,7 +103,7 @@ class P115TransferAdapter:
             return TransferResult(success=False, message="资源缺少 115 shareCode 或 receiveCode")
 
         folder_name = self.target_folder_name(resource)
-        target_cid = self.find_target_folder(folder_name)
+        target_cid = self.ensure_target_folder(folder_name)
         primary = self.first_share_file(share_code, receive_code)
         file_id = item_id(primary)
         source_name = item_name(primary) or resource.title

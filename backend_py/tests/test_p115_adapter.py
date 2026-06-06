@@ -24,6 +24,21 @@ class FakeClient:
         return {"state": True, "message": "ok"}
 
 
+class FakeMissingFolderClient(FakeClient):
+    def __init__(self, cookie: str):
+        super().__init__(cookie)
+        self.created_folder = None
+
+    def fs_files(self, payload):
+        if self.created_folder:
+            return {"state": True, "data": [{"name": self.created_folder, "cid": "101", "is_dir": True}]}
+        return {"state": True, "data": []}
+
+    def fs_mkdir(self, payload, pid=0):
+        self.created_folder = payload
+        return {"state": True, "data": {"cid": "101"}}
+
+
 def test_transfer_receives_share_into_movie_folder():
     resource = ResourceDto(
         id="pansou_sabc_ABCD",
@@ -56,6 +71,33 @@ def test_transfer_receives_share_into_movie_folder():
         "cid": "100",
         "is_check": 0,
     }
+
+
+def test_transfer_creates_missing_target_folder():
+    resource = ResourceDto(
+        id="pansou_sabc_ABCD",
+        title="Movie Folder",
+        provider="115",
+        mediaType="movie",
+        rawType="video",
+        size="-",
+        shareUrl="https://115cdn.com/s/sabc?password=ABCD",
+        extra={"shareCode": "sabc", "receiveCode": "ABCD"},
+    )
+    client = FakeMissingFolderClient("cookie")
+    adapter = P115TransferAdapter(
+        cookie="cookie",
+        default_movie_folder="automv",
+        default_tv_folder="autotv",
+        alist_base_path="/115",
+        client_factory=lambda cookie: client,
+    )
+
+    result = adapter.transfer(resource)
+
+    assert result.success is True
+    assert client.created_folder == "automv"
+    assert client.received_payload["cid"] == "101"
 
 
 def test_transfer_reports_missing_share_params():
