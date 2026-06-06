@@ -23,7 +23,7 @@ def map_pansou_item(item: dict[str, object], media_type: MediaType) -> ResourceD
     if not parsed:
         return None
     share_code, receive_code = parsed
-    title = str(item.get("name") or item.get("title") or share_code)
+    title = str(item.get("name") or item.get("title") or item.get("note") or share_code)
     return ResourceDto(
         id=f"pansou_{share_code}_{receive_code}",
         title=title,

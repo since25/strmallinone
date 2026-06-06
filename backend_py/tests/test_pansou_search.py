@@ -44,6 +44,19 @@ def test_map_pansou_item_uses_password_field():
     assert resource.extra["receiveCode"] == "EFGH"
 
 
+def test_map_pansou_item_uses_note_title():
+    item = {
+        "url": "https://115cdn.com/s/swwm6qp3zrk?password=t58d",
+        "password": "t58d",
+        "note": "Movie note title",
+    }
+
+    resource = map_pansou_item(item, "movie")
+
+    assert resource is not None
+    assert resource.title == "Movie note title"
+
+
 @pytest.mark.asyncio
 async def test_search_service_posts_to_pansou(tmp_path):
     def handler(request: httpx.Request) -> httpx.Response:
