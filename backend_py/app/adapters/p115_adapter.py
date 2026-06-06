@@ -32,6 +32,8 @@ def folder_id_from_response(resp: dict) -> str:
     if isinstance(data, dict):
         value = data.get("file_id") or data.get("fid") or data.get("cid") or data.get("id")
         return str(value or "")
+    if isinstance(data, str | int):
+        return str(data)
     return ""
 
 
@@ -72,11 +74,23 @@ class P115TransferAdapter:
     def create_target_folder(self, folder_name: str) -> str:
         resp = self.client.fs_mkdir(folder_name, pid=0)
         if not ok_response(resp):
+            message = str(resp.get("message") or resp.get("error") or "")
+            if "目录名称已存在" in message or "已存在" in message:
+                return self.find_target_folder_by_path(folder_name)
             raise RuntimeError(str(resp.get("message") or resp.get("error") or f"创建目标目录失败: {folder_name}"))
         folder_id = folder_id_from_response(resp)
         if folder_id:
             return folder_id
         return self.find_target_folder(folder_name)
+
+    def find_target_folder_by_path(self, folder_name: str) -> str:
+        resp = self.client.fs_dir_getid(f"/{folder_name.strip('/')}")
+        if not ok_response(resp):
+            raise RuntimeError(str(resp.get("message") or resp.get("error") or f"获取目标目录失败: {folder_name}"))
+        folder_id = folder_id_from_response(resp)
+        if not folder_id:
+            raise RuntimeError(f"目标目录缺少 cid: {folder_name}")
+        return folder_id
 
     def ensure_target_folder(self, folder_name: str) -> str:
         try:
