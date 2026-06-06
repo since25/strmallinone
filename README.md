@@ -1,5 +1,22 @@
 # strmallinone
 
+## 当前迁移状态
+
+项目正在从旧的 `Express + CloudSaver + strm_webhook` 后端迁移到 `FastAPI + PanSou + p115 + AList/STRM` 一体化后端。
+
+当前 Python 后端位于 `backend_py/`：
+
+- 搜索：只调用 PanSou 原生 API，不再聚合 CloudSaver。
+- 转存：使用 `P115_COOKIE` 直接调用 p115，CloudSaver 已从转存链路解耦。
+- STRM：原 `strm_webhook` 能力已合并进 FastAPI 后端，仍依赖 AList `/d` URL 供 Emby 播放。
+- Docker：`docker-compose.yml` 的 backend 服务已切换到 `backend_py/Dockerfile`，端口仍为 `3000`，前端可保持原 API 调用方式。
+
+`shareCode` 是 115 分享链接 `/s/...` 里的分享 ID，`receiveCode` 是提取码/访问码。后端会优先从完整 `shareUrl` 自动解析，正常情况下你不需要手动拆。
+
+新的部署和环境变量说明见 [docs/fastapi-backend.md](/Users/wangyichuan/Desktop/wangcodemac/strmallinone/docs/fastapi-backend.md)。
+
+以下旧文档保留作历史参考，仍有 CloudSaver/Express 相关内容。
+
 基于 CloudSaver + PanSou 聚合搜索、CloudSaver 115 转存、STRM webhook 生成的前后端一体化 MVP。
 
 任务流程固定为：`search -> transfer -> strm`
