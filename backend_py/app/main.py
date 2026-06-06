@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .api import health, search, tasks
+from .api import health, search, strm_compat, tasks
 from .adapters.alist import AListClient
 from .adapters.p115_adapter import P115TransferAdapter
 from .adapters.pansou import PanSouClient
@@ -62,6 +62,7 @@ def create_app() -> FastAPI:
     app.include_router(health.router, prefix="/api")
     app.include_router(search.router, prefix="/api")
     app.include_router(tasks.router, prefix="/api")
+    app.include_router(strm_compat.router)
     return app
 
 
