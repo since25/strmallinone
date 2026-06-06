@@ -28,7 +28,7 @@ class WorkflowService:
             self.logs.append(task_id, "info", f"等待 AList 刷新: {self.strm_delay_seconds} 秒")
             await asyncio.sleep(self.strm_delay_seconds)
             self.logs.append(task_id, "info", "开始生成 STRM")
-            result = await asyncio.to_thread(self.strm_service.generate_for_path, transfer.data.savePath)
+            result = await asyncio.to_thread(self.strm_service.generate_for_path, transfer.data.savePath, resource.mediaType)
             if result["errors"]:
                 message = result["errors"][0]
                 self.tasks.update_statuses(task_id, "failed", "success", "failed", message)
