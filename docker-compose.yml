@@ -14,7 +14,7 @@ services:
       STRM_SAVE_DIR: /data/strm
     volumes:
       - ./backend_py/data:/data/backend
-      - ./strm_output:/data/strm
+      - /docker1/alist-strm/video/115strm/115_OPEN:/data/strm
     ports:
       - "3000:3000"
     healthcheck:

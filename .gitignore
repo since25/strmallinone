@@ -11,3 +11,4 @@ strm_webhook
 .env
 backend/.env
 frontend/.env
+.omx/
