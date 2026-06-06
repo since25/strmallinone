@@ -43,6 +43,20 @@ def test_generate_for_path_writes_video_strm(tmp_path: Path):
     assert result["errors"] == []
 
 
+def test_generate_for_path_writes_single_video_file(tmp_path: Path):
+    service = StrmService(
+        FakeAList(),
+        StrmConfig("http://alist.local/d", tmp_path, "", {"mkv"}),
+    )
+
+    result = service.generate_for_path("/115/automv/Movie.mkv")
+
+    output = tmp_path / "115" / "automv" / "Movie.strm"
+    assert result["created"] == [str(output)]
+    assert result["errors"] == []
+    assert output.read_text() == "http://alist.local/d/115/automv/Movie.mkv"
+
+
 def test_direct_files_skip_existing(tmp_path: Path):
     output = tmp_path / "115" / "automv" / "Movie.strm"
     output.parent.mkdir(parents=True)

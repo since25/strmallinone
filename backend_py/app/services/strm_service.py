@@ -18,6 +18,9 @@ class StrmService:
 
     def generate_for_path(self, alist_path: str) -> dict[str, list[str]]:
         result: dict[str, list[str]] = {"created": [], "skipped": [], "errors": []}
+        if self.is_video_path(alist_path):
+            self.process_file(alist_path if alist_path.startswith("/") else f"/{alist_path}", result)
+            return result
         actual_path = self.resolve_actual_path(alist_path)
         if not actual_path:
             result["errors"].append(f"解析路径失败: {alist_path}")
@@ -90,8 +93,7 @@ class StrmService:
                 self.process_file(item_path, result)
 
     def process_file(self, file_path: str, result: dict[str, list[str]]) -> None:
-        ext = file_path.rsplit(".", 1)[-1].lower() if "." in file_path else ""
-        if ext not in self.config.video_exts:
+        if not self.is_video_path(file_path):
             return
         strm_path = Path(file_path).with_suffix(".strm")
         full_path = self.config.strm_save_dir / str(strm_path).lstrip("/")
@@ -107,3 +109,7 @@ class StrmService:
         content = f"{self.config.strm_server.rstrip('/')}{quote(strm_file_path, safe='/')}"
         full_path.write_text(content, encoding="utf-8")
         result["created"].append(str(full_path))
+
+    def is_video_path(self, file_path: str) -> bool:
+        ext = file_path.rsplit(".", 1)[-1].lower() if "." in file_path else ""
+        return ext in self.config.video_exts
