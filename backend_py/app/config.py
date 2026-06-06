@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     alist_token: str = Field(default="", alias="ALIST_TOKEN")
     strm_server: str = Field(default="http://192.168.70.138:5244/d", alias="STRM_SERVER")
     strm_save_dir: Path = Field(default=Path("/data/strm"), alias="STRM_SAVE_DIR")
+    strm_alist_base_path: str = Field(default="", alias="STRM_ALIST_BASE_PATH")
     strm_replace_path: str = Field(default="", alias="STRM_REPLACE_PATH")
     strm_delay_seconds: int = Field(default=10, alias="STRM_DELAY_SECONDS")
     strm_video_exts: str = Field(default="mp4,mkv,flv,mov,m4v,avi,webm,wmv,ts,rmvb", alias="STRM_VIDEO_EXTS")

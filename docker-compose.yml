@@ -11,10 +11,8 @@ services:
       PORT: 3000
       FRONTEND_ORIGIN: http://localhost:8080
       DATABASE_PATH: /data/backend/app.db
-      STRM_SAVE_DIR: /data/strm
     volumes:
       - ./backend_py/data:/data/backend
-      - /docker1/alist-strm/video/115strm/115_OPEN:/data/strm
     ports:
       - "3000:3000"
     healthcheck:

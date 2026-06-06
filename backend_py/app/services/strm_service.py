@@ -10,6 +10,7 @@ MediaType = Literal["movie", "tv"]
 class StrmConfig:
     strm_server: str
     strm_save_dir: Path
+    strm_alist_base_path: str
     strm_replace_path: str
     video_exts: set[str]
     movie_folder: str = "automv"
@@ -20,6 +21,9 @@ class StrmService:
     def __init__(self, alist, config: StrmConfig):
         self.alist = alist
         self.config = config
+
+    def _use_alist_upload(self) -> bool:
+        return bool(self.config.strm_alist_base_path)
 
     def generate_for_path(self, alist_path: str, media_type: MediaType | None = None) -> dict[str, list[str]]:
         result: dict[str, list[str]] = {"created": [], "skipped": [], "errors": []}
@@ -102,18 +106,54 @@ class StrmService:
     def process_file(self, file_path: str, result: dict[str, list[str]], media_type: MediaType | None = None) -> None:
         if not self.is_video_path(file_path):
             return
+        strm_content = self._build_strm_content(file_path)
+
+        if self._use_alist_upload():
+            self._upload_strm(file_path, strm_content, result, media_type)
+        else:
+            self._write_local_strm(file_path, strm_content, result, media_type)
+
+    def _build_strm_content(self, file_path: str) -> str:
+        strm_file_path = file_path
+        if self.config.strm_replace_path:
+            parts = file_path.split("/", 2)
+            if len(parts) >= 3:
+                strm_file_path = f"{self.config.strm_replace_path}/{parts[2]}"
+        return f"{self.config.strm_server.rstrip('/')}{quote(strm_file_path, safe='/')}"
+
+    def _alist_strm_path(self, file_path: str, media_type: MediaType | None = None) -> str:
+        base = self.config.strm_alist_base_path.rstrip("/")
+        rel = self.strm_output_path(file_path, media_type)
+        rel_str = str(rel).lstrip("/")
+        # When media_type is None, strm_output_path keeps the full path including the
+        # leading "115" segment.  For AList upload the base path already covers that
+        # root, so strip it.
+        if media_type is None and rel_str.startswith("115/"):
+            rel_str = rel_str[4:]
+        return f"{base}/{rel_str}"
+
+    def _upload_strm(
+        self, file_path: str, content: str, result: dict[str, list[str]], media_type: MediaType | None = None
+    ) -> None:
+        remote_path = self._alist_strm_path(file_path, media_type)
+        if self.alist.file_exists(remote_path):
+            result["skipped"].append(remote_path)
+            return
+        ok = self.alist.upload_file(remote_path, content.encode("utf-8"))
+        if ok:
+            result["created"].append(remote_path)
+        else:
+            result["errors"].append(f"AList 上传失败: {remote_path}")
+
+    def _write_local_strm(
+        self, file_path: str, content: str, result: dict[str, list[str]], media_type: MediaType | None = None
+    ) -> None:
         strm_path = self.strm_output_path(file_path, media_type)
         full_path = self.config.strm_save_dir / str(strm_path).lstrip("/")
         if full_path.exists():
             result["skipped"].append(str(full_path))
             return
         full_path.parent.mkdir(parents=True, exist_ok=True)
-        strm_file_path = file_path
-        if self.config.strm_replace_path:
-            parts = file_path.split("/", 2)
-            if len(parts) >= 3:
-                strm_file_path = f"{self.config.strm_replace_path}/{parts[2]}"
-        content = f"{self.config.strm_server.rstrip('/')}{quote(strm_file_path, safe='/')}"
         full_path.write_text(content, encoding="utf-8")
         result["created"].append(str(full_path))
 

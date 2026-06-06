@@ -29,11 +29,15 @@ def create_app() -> FastAPI:
     db = Database(settings.database_path)
     task_repository = TaskRepository(db)
     task_log_service = TaskLogService(TaskLogRepository(db))
+
+    alist_client = AListClient(settings.alist_url, settings.alist_token)
+
     strm_service = StrmService(
-        AListClient(settings.alist_url, settings.alist_token),
+        alist_client,
         StrmConfig(
             strm_server=settings.normalized_strm_server(),
             strm_save_dir=settings.strm_save_dir,
+            strm_alist_base_path=settings.strm_alist_base_path,
             strm_replace_path=settings.strm_replace_path,
             video_exts=settings.video_ext_set(),
         ),
