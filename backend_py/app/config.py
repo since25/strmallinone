@@ -5,12 +5,15 @@ from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+BACKEND_DIR = Path(__file__).resolve().parents[1]
+
+
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=BACKEND_DIR / ".env", extra="ignore")
 
     port: int = Field(default=3000, alias="PORT")
     frontend_origin: str = Field(default="http://localhost:5173", alias="FRONTEND_ORIGIN")
-    database_path: Path = Field(default=Path("./data/app.db"), alias="DATABASE_PATH")
+    database_path: Path = Field(default=BACKEND_DIR / "data" / "app.db", alias="DATABASE_PATH")
 
     pansou_base_url: str = Field(default="http://192.168.70.120:8888", alias="PANSOU_BASE_URL")
     pansou_search_path: str = Field(default="/api/search", alias="PANSOU_SEARCH_PATH")
