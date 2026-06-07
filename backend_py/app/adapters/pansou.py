@@ -4,15 +4,29 @@ import httpx
 
 from ..models.resource import MediaType, ResourceDto
 
-LINK_RE = re.compile(r"/s/(?P<share>[a-z0-9]+)(?:\?password=(?P<pwd>[A-Za-z0-9]{4}))?", re.I)
+LINK_RE = re.compile(r"(?P<url>https?://[^\s，。；;]+/s/(?P<share>[a-z0-9]+)(?:\?password=(?P<pwd>[A-Za-z0-9]{4}))?)", re.I)
+CODE_RE = re.compile(r"(?:提取码|访问码|密码)\s*[:：]?\s*(?P<code>[A-Za-z0-9]{4})", re.I)
+
+
+def parse_115_share_text(text: str, password: str | None = None) -> tuple[str, str, str] | None:
+    match = LINK_RE.search(text.strip())
+    if not match:
+        return None
+    receive_code = password or match.group("pwd")
+    if not receive_code:
+        code_match = CODE_RE.search(text)
+        receive_code = code_match.group("code") if code_match else None
+    if not receive_code:
+        return None
+    return match.group("url"), match.group("share"), receive_code
 
 
 def parse_115_link(url: str, password: str | None = None) -> tuple[str, str] | None:
-    match = LINK_RE.search(url)
-    receive_code = password or (match.group("pwd") if match else None)
-    if not match or not receive_code:
+    parsed = parse_115_share_text(url, password)
+    if not parsed:
         return None
-    return match.group("share"), receive_code
+    _, share_code, receive_code = parsed
+    return share_code, receive_code
 
 
 def map_pansou_item(item: dict[str, object], media_type: MediaType) -> ResourceDto | None:

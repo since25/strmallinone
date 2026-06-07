@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
 
-from backend_py.app.adapters.pansou import PanSouClient, map_pansou_item
+from backend_py.app.adapters.pansou import PanSouClient, map_pansou_item, parse_115_share_text
 from backend_py.app.main import create_app
 from backend_py.app.repositories.database import Database
 from backend_py.app.repositories.search_history_repository import SearchHistoryRepository
@@ -55,6 +55,35 @@ def test_map_pansou_item_uses_note_title():
 
     assert resource is not None
     assert resource.title == "Movie note title"
+
+
+def test_parse_115_share_text_uses_password_query():
+    parsed = parse_115_share_text("分享 https://115cdn.com/s/sabc123?password=ABCD 复制即可")
+
+    assert parsed == ("https://115cdn.com/s/sabc123?password=ABCD", "sabc123", "ABCD")
+
+
+def test_parse_115_share_text_uses_chinese_extract_code():
+    parsed = parse_115_share_text("资源链接：https://115.com/s/sxyz987\n提取码：t58d")
+
+    assert parsed == ("https://115.com/s/sxyz987", "sxyz987", "t58d")
+
+
+def test_parse_115_share_text_uses_access_or_password_label():
+    assert parse_115_share_text("https://115.com/s/saaa111 访问码 efgh") == (
+        "https://115.com/s/saaa111",
+        "saaa111",
+        "efgh",
+    )
+    assert parse_115_share_text("https://115.com/s/sbbb222 密码: WXYZ") == (
+        "https://115.com/s/sbbb222",
+        "sbbb222",
+        "WXYZ",
+    )
+
+
+def test_parse_115_share_text_rejects_missing_receive_code():
+    assert parse_115_share_text("https://115.com/s/sabc123") is None
 
 
 @pytest.mark.asyncio
