@@ -1,10 +1,12 @@
 import re
+from urllib.parse import parse_qs
 
 import httpx
 
 from ..models.resource import MediaType, ResourceDto
 
 LINK_RE = re.compile(r"(?P<url>https?://[^\s，。；;]+/s/(?P<share>[a-z0-9]+)(?:\?password=(?P<pwd>[A-Za-z0-9]{4}))?)", re.I)
+LINK_PATH_RE = re.compile(r"/s/(?P<share>[a-z0-9]+)(?P<tail>[^\s，。；;]*)", re.I)
 CODE_RE = re.compile(r"(?:提取码|访问码|密码)\s*[:：]?\s*(?P<code>[A-Za-z0-9]{4})", re.I)
 
 
@@ -23,10 +25,19 @@ def parse_115_share_text(text: str, password: str | None = None) -> tuple[str, s
 
 def parse_115_link(url: str, password: str | None = None) -> tuple[str, str] | None:
     parsed = parse_115_share_text(url, password)
-    if not parsed:
+    if parsed:
+        _, share_code, receive_code = parsed
+        return share_code, receive_code
+
+    match = LINK_PATH_RE.search(url.strip())
+    if not match:
         return None
-    _, share_code, receive_code = parsed
-    return share_code, receive_code
+    query = match.group("tail").partition("?")[2]
+    query_password = parse_qs(query).get("password", [None])[0]
+    receive_code = password or query_password
+    if not receive_code:
+        return None
+    return match.group("share"), receive_code
 
 
 def map_pansou_item(item: dict[str, object], media_type: MediaType) -> ResourceDto | None:

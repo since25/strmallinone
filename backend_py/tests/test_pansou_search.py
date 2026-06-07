@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
 
-from backend_py.app.adapters.pansou import PanSouClient, map_pansou_item, parse_115_share_text
+from backend_py.app.adapters.pansou import PanSouClient, map_pansou_item, parse_115_link, parse_115_share_text
 from backend_py.app.main import create_app
 from backend_py.app.repositories.database import Database
 from backend_py.app.repositories.search_history_repository import SearchHistoryRepository
@@ -84,6 +84,11 @@ def test_parse_115_share_text_uses_access_or_password_label():
 
 def test_parse_115_share_text_rejects_missing_receive_code():
     assert parse_115_share_text("https://115.com/s/sabc123") is None
+
+
+def test_parse_115_link_accepts_path_like_pansou_urls_with_password_field():
+    assert parse_115_link("/s/sabc123", "ABCD") == ("sabc123", "ABCD")
+    assert parse_115_link("115.com/s/sxyz987", "EFGH") == ("sxyz987", "EFGH")
 
 
 @pytest.mark.asyncio
