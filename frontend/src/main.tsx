@@ -228,6 +228,7 @@ function MainPage() {
                 dataSource={resources}
                 pagination={{ pageSize: 6 }}
                 tableLayout="fixed"
+                scroll={{ x: 560 }}
                 rowSelection={{
                   type: 'radio',
                   selectedRowKeys: selectedResourceId ? [selectedResourceId] : [],
