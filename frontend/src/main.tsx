@@ -109,11 +109,10 @@ function MainPage() {
   const handleManualRunTask = async () => {
     const values = await manualForm.validateFields();
     setRunning(true);
-    setTaskId(null);
-    setTask(null);
     try {
       const result = await createManualTransferTask(values);
       setTaskId(result.taskId);
+      setTask(null);
       messageApi.success(`手动任务已创建: ${result.taskId}`);
     } catch (error) {
       setRunning(false);
@@ -186,7 +185,7 @@ function MainPage() {
                 <Form.Item
                   name="shareText"
                   label="完整分享文本"
-                  rules={[{ required: true, message: '请粘贴 115 分享文本' }]}
+                  rules={[{ required: true, whitespace: true, message: '请粘贴 115 分享文本' }]}
                 >
                   <Input.TextArea
                     rows={4}
