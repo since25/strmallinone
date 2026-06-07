@@ -85,6 +85,19 @@ def test_create_manual_transfer_task_rejects_invalid_share_text():
     assert response.json()["detail"] == "未找到有效的 115 分享链接或提取码"
 
 
+def test_create_manual_transfer_task_rejects_non_115_host():
+    app = create_app()
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/tasks/manual-transfer",
+        json={"shareText": "https://anxia.com/s/sabc123 提取码 t58d", "mediaType": "movie"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "未找到有效的 115 分享链接或提取码"
+
+
 def test_task_logs_endpoint_returns_existing_logs():
     app = create_app()
     client = TestClient(app)

@@ -63,6 +63,14 @@ def test_parse_115_share_text_uses_password_query():
     assert parsed == ("https://115cdn.com/s/sabc123?password=ABCD", "sabc123", "ABCD")
 
 
+def test_parse_115_share_text_uses_password_query_after_other_params():
+    assert parse_115_share_text("https://115.com/s/sabc123?foo=1&password=t58d") == (
+        "https://115.com/s/sabc123?foo=1&password=t58d",
+        "sabc123",
+        "t58d",
+    )
+
+
 def test_parse_115_share_text_uses_chinese_extract_code():
     parsed = parse_115_share_text("资源链接：https://115.com/s/sxyz987\n提取码：t58d")
 
@@ -84,6 +92,10 @@ def test_parse_115_share_text_uses_access_or_password_label():
 
 def test_parse_115_share_text_rejects_missing_receive_code():
     assert parse_115_share_text("https://115.com/s/sabc123") is None
+
+
+def test_parse_115_share_text_rejects_non_115_host():
+    assert parse_115_share_text("https://anxia.com/s/sabc123 提取码 t58d") is None
 
 
 def test_parse_115_link_accepts_path_like_pansou_urls_with_password_field():

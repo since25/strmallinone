@@ -1,26 +1,41 @@
 import re
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, urlparse
 
 import httpx
 
 from ..models.resource import MediaType, ResourceDto
 
-LINK_RE = re.compile(r"(?P<url>https?://[^\s，。；;]+/s/(?P<share>[a-z0-9]+)(?:\?password=(?P<pwd>[A-Za-z0-9]{4}))?)", re.I)
+LINK_RE = re.compile(r"(?P<url>https?://[^\s，。；;]+)", re.I)
 LINK_PATH_RE = re.compile(r"/s/(?P<share>[a-z0-9]+)(?P<tail>[^\s，。；;]*)", re.I)
 CODE_RE = re.compile(r"(?:提取码|访问码|密码)\s*[:：]?\s*(?P<code>[A-Za-z0-9]{4})", re.I)
+SUPPORTED_115_HOSTS = {"115.com", "www.115.com", "115cdn.com"}
+
+
+def is_supported_115_host(hostname: str | None) -> bool:
+    if not hostname:
+        return False
+    host = hostname.lower()
+    return host in SUPPORTED_115_HOSTS
 
 
 def parse_115_share_text(text: str, password: str | None = None) -> tuple[str, str, str] | None:
     match = LINK_RE.search(text.strip())
     if not match:
         return None
-    receive_code = password or match.group("pwd")
+    share_url = match.group("url")
+    parsed_url = urlparse(share_url)
+    if not is_supported_115_host(parsed_url.hostname):
+        return None
+    path_match = LINK_PATH_RE.search(parsed_url.path)
+    if not path_match:
+        return None
+    receive_code = password or parse_qs(parsed_url.query).get("password", [None])[0]
     if not receive_code:
         code_match = CODE_RE.search(text)
         receive_code = code_match.group("code") if code_match else None
     if not receive_code:
         return None
-    return match.group("url"), match.group("share"), receive_code
+    return share_url, path_match.group("share"), receive_code
 
 
 def parse_115_link(url: str, password: str | None = None) -> tuple[str, str] | None:
