@@ -1,4 +1,4 @@
-import type { ApiResponse, MediaType, ResourceItem, TaskDetail, TaskLogItem } from '../types';
+import type { ApiResponse, ManualTransferRequest, MediaType, ResourceItem, TaskDetail, TaskLogItem } from '../types';
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
@@ -28,6 +28,13 @@ export function createTransferTask(keyword: string, resource: ResourceItem): Pro
   return request<{ taskId: string }>('/api/tasks/transfer', {
     method: 'POST',
     body: JSON.stringify({ keyword, resource }),
+  });
+}
+
+export function createManualTransferTask(payload: ManualTransferRequest): Promise<{ taskId: string }> {
+  return request<{ taskId: string }>('/api/tasks/manual-transfer', {
+    method: 'POST',
+    body: JSON.stringify(payload),
   });
 }
 

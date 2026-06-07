@@ -15,6 +15,11 @@ export interface ResourceItem {
   extra: Record<string, unknown>;
 }
 
+export interface ManualTransferRequest {
+  shareText: string;
+  mediaType: MediaType;
+}
+
 export interface TaskLogItem {
   id: number;
   taskId: string;

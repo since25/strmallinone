@@ -20,7 +20,7 @@ import {
   message,
   Tooltip,
 } from 'antd';
-import { createTransferTask, getTask, searchResources } from './api/client';
+import { createManualTransferTask, createTransferTask, getTask, searchResources } from './api/client';
 import { LogPanel } from './components/LogPanel';
 import { TaskStatusCard } from './components/TaskStatusCard';
 import { useTaskLogs } from './hooks/useTaskLogs';
@@ -29,6 +29,7 @@ import './styles.css';
 
 function MainPage() {
   const [form] = Form.useForm<{ keyword: string; driver: '115'; mediaType: MediaType }>();
+  const [manualForm] = Form.useForm<{ shareText: string; mediaType: MediaType }>();
   const [resources, setResources] = React.useState<ResourceItem[]>([]);
   const [searching, setSearching] = React.useState(false);
   const [running, setRunning] = React.useState(false);
@@ -105,6 +106,21 @@ function MainPage() {
     }
   };
 
+  const handleManualRunTask = async () => {
+    const values = await manualForm.validateFields();
+    setRunning(true);
+    setTaskId(null);
+    setTask(null);
+    try {
+      const result = await createManualTransferTask(values);
+      setTaskId(result.taskId);
+      messageApi.success(`手动任务已创建: ${result.taskId}`);
+    } catch (error) {
+      setRunning(false);
+      messageApi.error(error instanceof Error ? error.message : '创建手动任务失败');
+    }
+  };
+
   return (
     <Layout className="app-shell">
       {contextHolder}
@@ -162,6 +178,48 @@ function MainPage() {
                     转存并生成 STRM
                   </Button>
                 </Space>
+              </Form>
+            </Card>
+
+            <Card title="手动 115 链接转存" className="panel-card">
+              <Form form={manualForm} layout="vertical" initialValues={{ shareText: '', mediaType: 'movie' }}>
+                <Form.Item
+                  name="shareText"
+                  label="完整分享文本"
+                  rules={[{ required: true, message: '请粘贴 115 分享文本' }]}
+                >
+                  <Input.TextArea
+                    rows={4}
+                    placeholder="粘贴包含 115 链接和提取码的完整分享文本"
+                    allowClear
+                  />
+                </Form.Item>
+                <Row gutter={16} align="bottom">
+                  <Col xs={24} md={8}>
+                    <Form.Item name="mediaType" label="转存路径">
+                      <Select
+                        size="large"
+                        options={[
+                          { label: '电影', value: 'movie' },
+                          { label: '电视', value: 'tv' },
+                        ]}
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col xs={24} md={16}>
+                    <Form.Item label=" ">
+                      <Button
+                        type="primary"
+                        icon={<ThunderboltOutlined />}
+                        loading={running}
+                        onClick={() => void handleManualRunTask()}
+                        block
+                      >
+                        手动转存并生成 STRM
+                      </Button>
+                    </Form.Item>
+                  </Col>
+                </Row>
               </Form>
             </Card>
 
