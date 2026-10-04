@@ -19,6 +19,10 @@ class TaskDto(BaseModel):
     transferStatus: StepStatus
     strmStatus: StepStatus
     errorMessage: str | None
+    resourceKey: str | None = None
+    targetFolder: str | None = None
+    duplicate: bool = False
+    retryCount: int = 0
     createdAt: str
     updatedAt: str
 

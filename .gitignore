@@ -12,3 +12,5 @@ strm_webhook
 backend/.env
 frontend/.env
 .omx/
+.worktrees/
+**/__pycache__/

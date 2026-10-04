@@ -23,22 +23,33 @@ class WorkflowService:
                 self.tasks.update_statuses(task_id, "failed", "failed", "pending", transfer.message)
                 self.logs.append(task_id, "error", transfer.message)
                 return
-            self.tasks.update_statuses(task_id, "running", "success", "pending")
+            self.tasks.update_statuses(task_id, "running", "success", "pending", duplicate=bool(transfer.data.duplicate))
             self.logs.append(task_id, "success", f"115 转存成功: {transfer.data.savePath}")
             self.logs.append(task_id, "info", f"等待 AList 刷新: {self.strm_delay_seconds} 秒")
             await asyncio.sleep(self.strm_delay_seconds)
             self.logs.append(task_id, "info", "开始生成 STRM")
-            result = await asyncio.to_thread(self.strm_service.generate_for_path, transfer.data.savePath, resource.mediaType)
-            if result["errors"]:
-                message = result["errors"][0]
+            save_paths = transfer.data.savePaths or [transfer.data.savePath]
+            results = [
+                await asyncio.to_thread(self.strm_service.generate_for_path, path, resource.mediaType)
+                for path in save_paths
+            ]
+            errors = [error for result in results for error in result["errors"]]
+            if errors:
+                message = errors[0]
                 self.tasks.update_statuses(task_id, "failed", "success", "failed", message)
                 self.logs.append(task_id, "error", message)
                 return
-            self.tasks.update_statuses(task_id, "success", "success", "success")
+            self.tasks.update_statuses(
+                task_id,
+                "success",
+                "success",
+                "success",
+                duplicate=bool(transfer.data.duplicate),
+            )
             self.logs.append(
                 task_id,
                 "success",
-                f"STRM 生成完成: 新建={len(result['created'])}, 跳过={len(result['skipped'])}",
+                f"STRM 生成完成: 新建={sum(len(result['created']) for result in results)}, 跳过={sum(len(result['skipped']) for result in results)}",
             )
             self.logs.append(task_id, "success", "任务完成")
         except Exception as exc:

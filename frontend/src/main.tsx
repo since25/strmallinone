@@ -10,7 +10,7 @@ import {
   Form,
   Input,
   Layout,
-  Radio,
+  List,
   Row,
   Select,
   Space,
@@ -20,11 +20,11 @@ import {
   message,
   Tooltip,
 } from 'antd';
-import { createManualTransferTask, createTransferTask, getTask, searchResources } from './api/client';
+import { createBatchTransfer, createManualTransferTask, createTransferTask, getBatch, getBatchItems, getTask, searchResources } from './api/client';
 import { LogPanel } from './components/LogPanel';
 import { TaskStatusCard } from './components/TaskStatusCard';
 import { useTaskLogs } from './hooks/useTaskLogs';
-import type { MediaType, ResourceItem, TaskDetail } from './types';
+import type { BatchDetail, BatchItem, MediaType, ResourceItem, TaskDetail } from './types';
 import './styles.css';
 
 function MainPage() {
@@ -33,16 +33,19 @@ function MainPage() {
   const [resources, setResources] = React.useState<ResourceItem[]>([]);
   const [searching, setSearching] = React.useState(false);
   const [running, setRunning] = React.useState(false);
-  const [selectedResourceId, setSelectedResourceId] = React.useState<string | null>(null);
+  const [selectedResourceIds, setSelectedResourceIds] = React.useState<React.Key[]>([]);
   const [taskId, setTaskId] = React.useState<string | null>(null);
   const [task, setTask] = React.useState<TaskDetail | null>(null);
+  const [batch, setBatch] = React.useState<BatchDetail | null>(null);
+  const [batchItems, setBatchItems] = React.useState<BatchItem[]>([]);
   const [messageApi, contextHolder] = message.useMessage();
   const { logs, connected } = useTaskLogs(taskId);
 
-  const selectedResource = React.useMemo(
-    () => resources.find((item) => item.id === selectedResourceId) ?? null,
-    [resources, selectedResourceId],
+  const selectedResources = React.useMemo(
+    () => resources.filter((item) => selectedResourceIds.includes(item.id)),
+    [resources, selectedResourceIds],
   );
+  const selectedResource = selectedResources[0] ?? null;
 
   React.useEffect(() => {
     if (!taskId) {
@@ -70,12 +73,39 @@ function MainPage() {
     return () => window.clearInterval(timer);
   }, [taskId, messageApi]);
 
+  React.useEffect(() => {
+    if (!batch?.id) return;
+    const poll = async () => {
+      try {
+        const detail = await getBatch(batch.id);
+        setBatch(detail);
+      } catch (error) {
+        messageApi.error(error instanceof Error ? error.message : '读取批次状态失败');
+      }
+    };
+    void poll();
+    const timer = window.setInterval(() => void poll(), 1500);
+    return () => window.clearInterval(timer);
+  }, [batch?.id, messageApi]);
+
+  React.useEffect(() => {
+    if (!batch?.id) {
+      setBatchItems([]);
+      return;
+    }
+    void getBatchItems(batch.id).then(setBatchItems).catch((error) => {
+      messageApi.error(error instanceof Error ? error.message : '读取批次项失败');
+    });
+  }, [batch?.id, batch?.updatedAt, messageApi]);
+
   const handleSearch = async () => {
     const values = await form.validateFields();
     setSearching(true);
-    setSelectedResourceId(null);
+    setSelectedResourceIds([]);
     setTaskId(null);
     setTask(null);
+    setBatch(null);
+    setBatchItems([]);
     try {
       const data = await searchResources(values.keyword, values.driver, values.mediaType);
       setResources(data);
@@ -85,6 +115,34 @@ function MainPage() {
       setResources([]);
     } finally {
       setSearching(false);
+    }
+  };
+
+  const handleRunBatch = async () => {
+    if (selectedResources.length === 0) {
+      messageApi.warning('请至少选择一条资源');
+      return;
+    }
+    try {
+      const result = await createBatchTransfer(form.getFieldValue('keyword'), selectedResources);
+      setBatch(result);
+      messageApi.success(`批次已创建: ${result.id}`);
+    } catch (error) {
+      messageApi.error(error instanceof Error ? error.message : '创建批次失败');
+    }
+  };
+
+  const handleViewBatchTask = (item: BatchItem) => {
+    if (item.taskId) setTaskId(item.taskId);
+  };
+
+  const handleRetryBatchTask = async (item: BatchItem) => {
+    try {
+      const result = await createTransferTask(batch?.keyword ?? form.getFieldValue('keyword'), item.resource);
+      setTaskId(result.taskId);
+      messageApi.success(`已重新提交任务: ${result.taskId}`);
+    } catch (error) {
+      messageApi.error(error instanceof Error ? error.message : '重新提交失败');
     }
   };
 
@@ -128,7 +186,7 @@ function MainPage() {
           <Tag color="geekblue">search → transfer → strm</Tag>
           <Typography.Title>STRM Workflow Console</Typography.Title>
           <Typography.Paragraph>
-            针对 CloudSaver 搜索、115 转存与 STRM 生成的一体化任务面板。
+            针对 PanSou 搜索、p115 转存、AList 刷新与 STRM 生成的一体化任务面板。
           </Typography.Paragraph>
         </div>
 
@@ -175,6 +233,9 @@ function MainPage() {
                     disabled={!selectedResource || searching}
                   >
                     转存并生成 STRM
+                  </Button>
+                  <Button type="default" loading={Boolean(batch && batch.status === 'running')} onClick={() => void handleRunBatch()} disabled={selectedResources.length === 0 || searching}>
+                    批量转存 ({selectedResources.length})
                   </Button>
                 </Space>
               </Form>
@@ -230,9 +291,8 @@ function MainPage() {
                 tableLayout="fixed"
                 scroll={{ x: 560 }}
                 rowSelection={{
-                  type: 'radio',
-                  selectedRowKeys: selectedResourceId ? [selectedResourceId] : [],
-                  onChange: (selectedRowKeys) => setSelectedResourceId(String(selectedRowKeys[0] ?? '')),
+                  selectedRowKeys: selectedResourceIds,
+                  onChange: (selectedRowKeys) => setSelectedResourceIds(selectedRowKeys),
                 }}
                 columns={[
                   {
@@ -274,16 +334,31 @@ function MainPage() {
                 ]}
               />
               <div className="selection-hint">
-                <Radio checked={Boolean(selectedResource)} />
                 <Typography.Text>
-                  当前选择：{selectedResource ? selectedResource.title : '未选择'}
+                  当前选择：{selectedResources.length ? `${selectedResources.length} 条资源` : '未选择'}
                 </Typography.Text>
               </div>
             </Card>
           </Col>
 
           <Col xs={24} xl={8}>
-            <TaskStatusCard task={task} />
+            <TaskStatusCard task={task} batch={batch} />
+            {batchItems.some((item) => item.status === 'failed') && (
+              <Card title="批次失败项" className="panel-card batch-card">
+                <List
+                  size="small"
+                  dataSource={batchItems.filter((item) => item.status === 'failed')}
+                  renderItem={(item) => (
+                    <List.Item actions={[
+                      <Button key="view" size="small" onClick={() => handleViewBatchTask(item)} disabled={!item.taskId}>查看任务</Button>,
+                      <Button key="retry" size="small" type="link" onClick={() => void handleRetryBatchTask(item)}>重新提交</Button>,
+                    ]}>
+                      <Typography.Text ellipsis>{item.resource.title}（{item.taskId ?? '无任务 ID'}）</Typography.Text>
+                    </List.Item>
+                  )}
+                />
+              </Card>
+            )}
             <LogPanel logs={logs} connected={connected} />
           </Col>
         </Row>

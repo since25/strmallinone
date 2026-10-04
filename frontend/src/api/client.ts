@@ -1,4 +1,4 @@
-import type { ApiResponse, ManualTransferRequest, MediaType, ResourceItem, TaskDetail, TaskLogItem } from '../types';
+import type { ApiResponse, BatchDetail, BatchItem, ManualTransferRequest, MediaType, ResourceItem, TaskDetail, TaskLogItem } from '../types';
 
 type ErrorPayload = Partial<ApiResponse<unknown>> & {
   detail?: unknown;
@@ -84,18 +84,33 @@ export function searchResources(keyword: string, driver: '115', mediaType: Media
   });
 }
 
-export function createTransferTask(keyword: string, resource: ResourceItem): Promise<{ taskId: string }> {
-  return request<{ taskId: string }>('/api/tasks/transfer', {
+export function createTransferTask(keyword: string, resource: ResourceItem): Promise<{ taskId: string; reused?: boolean }> {
+  return request<{ taskId: string; reused?: boolean }>('/api/tasks/transfer', {
     method: 'POST',
     body: JSON.stringify({ keyword, resource }),
   });
 }
 
-export function createManualTransferTask(payload: ManualTransferRequest): Promise<{ taskId: string }> {
-  return request<{ taskId: string }>('/api/tasks/manual-transfer', {
+export function createManualTransferTask(payload: ManualTransferRequest): Promise<{ taskId: string; reused?: boolean }> {
+  return request<{ taskId: string; reused?: boolean }>('/api/tasks/manual-transfer', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
+}
+
+export function createBatchTransfer(keyword: string, items: ResourceItem[], concurrency = 2): Promise<BatchDetail> {
+  return request<BatchDetail>('/api/batches/transfer', {
+    method: 'POST',
+    body: JSON.stringify({ keyword, items, concurrency }),
+  });
+}
+
+export function getBatch(batchId: string): Promise<BatchDetail> {
+  return request<BatchDetail>(`/api/batches/${batchId}`);
+}
+
+export function getBatchItems(batchId: string): Promise<BatchItem[]> {
+  return request<BatchItem[]>(`/api/batches/${batchId}/items`);
 }
 
 export function getTask(taskId: string): Promise<TaskDetail> {
