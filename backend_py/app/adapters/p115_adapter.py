@@ -104,6 +104,9 @@ class P115TransferAdapter:
             return self.create_target_folder(folder_name)
 
     def first_share_file(self, share_code: str, receive_code: str) -> dict:
+        return self.share_files(share_code, receive_code)[0]
+
+    def share_files(self, share_code: str, receive_code: str) -> list[dict]:
         resp = self.client.share_snap({"share_code": share_code, "receive_code": receive_code, "cid": 0, "limit": 32})
         if not ok_response(resp):
             raise RuntimeError(str(resp.get("message") or resp.get("error") or "读取 115 分享失败"))
@@ -111,7 +114,10 @@ class P115TransferAdapter:
         items = data.get("list") or data.get("data") or []
         if not items:
             raise RuntimeError("分享链接为空，未获取到可转存文件")
-        return items[0]
+        parsed_items = [item for item in items if isinstance(item, dict)]
+        if not parsed_items:
+            raise RuntimeError("分享链接为空，未获取到可转存文件")
+        return parsed_items
 
     def transfer(self, resource: ResourceDto) -> TransferResult:
         share_code = str(resource.extra.get("shareCode") or "")
@@ -121,36 +127,45 @@ class P115TransferAdapter:
 
         folder_name = self.target_folder_name(resource)
         target_cid = self.ensure_target_folder(folder_name)
-        primary = self.first_share_file(share_code, receive_code)
-        file_id = item_id(primary)
-        source_name = item_name(primary) or resource.title
-        if not file_id:
-            return TransferResult(success=False, message="分享文件缺少 file_id", raw={"shareFile": primary})
-
-        receive_resp = self.client.share_receive(
-            {
-                "share_code": share_code,
-                "receive_code": receive_code,
-                "file_id": file_id,
-                "cid": target_cid,
-                "is_check": 0,
-            }
-        )
-        message = str(receive_resp.get("message") or receive_resp.get("error") or "")
-        duplicate = "已接收" in message or "无需重复" in message
-        if not ok_response(receive_resp):
-            return TransferResult(success=False, message=message or "115 转存失败", raw=receive_resp)
+        share_items = self.share_files(share_code, receive_code)
+        if len(share_items) > 1 and any(item_is_dir(item) for item in share_items):
+            return TransferResult(success=False, message="115 分享包含目录，当前版本不支持目录递归转存", raw={"shareFiles": share_items})
+        save_paths: list[str] = []
+        responses: list[dict] = []
+        duplicate = True
+        for item in share_items:
+            file_id = item_id(item)
+            source_name = item_name(item) or resource.title
+            if not file_id:
+                return TransferResult(success=False, message="分享文件缺少 file_id", raw={"shareFile": item})
+            receive_resp = self.client.share_receive(
+                {"share_code": share_code, "receive_code": receive_code, "file_id": file_id, "cid": target_cid, "is_check": 0}
+            )
+            message = str(receive_resp.get("message") or receive_resp.get("error") or "")
+            item_duplicate = "已接收" in message or "无需重复" in message
+            duplicate = duplicate and item_duplicate
+            if not ok_response(receive_resp):
+                return TransferResult(success=False, message=message or "115 转存失败", raw={"receiveResponse": receive_resp, "shareFile": item})
+            responses.append(receive_resp)
+            save_paths.append(f"{self.alist_base_path}/{folder_name}/{source_name}")
+        source_name = item_name(share_items[0]) or resource.title
 
         return TransferResult(
             success=True,
             message="115 文件已存在，跳过重复接收" if duplicate else "115 转存成功",
             data=TransferData(
-                savePath=f"{self.alist_base_path}/{folder_name}/{source_name}",
+                savePath=save_paths[0],
                 sourceName=source_name,
                 savedName=source_name,
-                fileCount=1,
+                fileCount=len(save_paths),
                 transferId=uuid4().hex,
                 duplicate=duplicate,
+                savePaths=save_paths,
             ),
-            raw={"receiveResponse": receive_resp, "shareFile": primary},
+            raw={
+                "receiveResponses": responses,
+                "shareFiles": share_items,
+                "receiveResponse": responses[0] if len(responses) == 1 else responses,
+                "shareFile": share_items[0] if len(share_items) == 1 else share_items,
+            },
         )

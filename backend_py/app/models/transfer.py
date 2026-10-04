@@ -8,6 +8,7 @@ class TransferData(BaseModel):
     fileCount: int
     transferId: str
     duplicate: bool = False
+    savePaths: list[str] = Field(default_factory=list)
 
 
 class TransferResult(BaseModel):

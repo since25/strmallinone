@@ -7,6 +7,7 @@ from .adapters.p115_adapter import P115TransferAdapter
 from .adapters.pansou import PanSouClient
 from .config import get_settings
 from .repositories.database import Database
+from .repositories.batch_repository import BatchRepository
 from .repositories.search_history_repository import SearchHistoryRepository
 from .repositories.task_log_repository import TaskLogRepository
 from .repositories.task_repository import TaskRepository
@@ -14,6 +15,7 @@ from .services.search_service import SearchService
 from .services.strm_service import StrmConfig, StrmService
 from .services.task_log_service import TaskLogService
 from .services.workflow_service import WorkflowService
+from .services.batch_service import BatchService
 
 
 def create_app() -> FastAPI:
@@ -26,7 +28,11 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    db = Database(settings.database_path)
+    db = Database(
+        settings.database_path,
+        default_movie_folder=settings.p115_default_movie_folder,
+        default_tv_folder=settings.p115_default_tv_folder,
+    )
     task_repository = TaskRepository(db)
     task_log_service = TaskLogService(TaskLogRepository(db))
 
@@ -48,6 +54,7 @@ def create_app() -> FastAPI:
         SearchHistoryRepository(db),
     )
     app.state.task_repository = task_repository
+    app.state.batch_repository = BatchRepository(db)
     app.state.task_log_service = task_log_service
     app.state.strm_service = strm_service
     app.state.workflow_service = WorkflowService(
@@ -61,6 +68,13 @@ def create_app() -> FastAPI:
         ),
         strm_service,
         settings.strm_delay_seconds,
+    )
+    app.state.batch_service = BatchService(
+        app.state.batch_repository,
+        task_repository,
+        app.state.workflow_service,
+        settings.p115_default_movie_folder,
+        settings.p115_default_tv_folder,
     )
 
     app.include_router(health.router, prefix="/api")

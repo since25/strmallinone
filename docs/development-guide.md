@@ -1,3 +1,7 @@
+# 项目开发指南（历史参考）
+
+> 本文保留旧 Express/CloudSaver/STRM Webhook 链路的开发记录，不适用于当前运行链路。当前部署使用 `backend_py` 的 FastAPI + PanSou + p115 + AList/STRM，请以 [docs/fastapi-backend.md](fastapi-backend.md) 和 [docs/batch-transfer.md](batch-transfer.md) 为准。
+
 # 项目开发指南：基于 CloudSaver + 115 转存 + STRM Webhook 的前后端应用
 
 ## 1. 项目目标

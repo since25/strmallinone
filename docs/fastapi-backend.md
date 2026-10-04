@@ -17,6 +17,39 @@ frontend
 
 CloudSaver is no longer part of search or transfer in the Python backend.
 
+## Batch transfer and idempotency
+
+`backend_py` is the runtime backend. Search results are de-duplicated by
+`provider:shareCode:receiveCode`; the first title is retained and distinct
+source labels are exposed in `extra.sources`.
+
+Single task creation remains available at `POST /api/tasks/transfer` and
+`POST /api/tasks/manual-transfer`. Both routes return `taskId` and `reused`.
+An active or successful task with the same resource key and target folder is
+reused. Failed tasks may be submitted again.
+
+Batch creation uses `POST /api/batches/transfer`. `concurrency` is clamped to
+1–4 and defaults to 2. Inspect a batch with `GET /api/batches/{batch_id}` and
+its children with `GET /api/batches/{batch_id}/items`. A batch is `success`
+when all children succeed or are skipped, `partial` when some succeed and some
+fail, and `failed` when every child fails. Duplicate p115 receives are
+successful item operations and are counted as `skipped`.
+
+The SQLite migration is additive. `transfer_tasks` stores the resource key,
+target folder, duplicate flag and retry count; `transfer_batches` and
+`transfer_items` store durable batch state. After a restart, query the batch
+endpoint to inspect persisted children. Pending/running work does not resume
+automatically in this release; retry unfinished items through the single-task
+route.
+
+Reused pending/running items wait up to 30 seconds for the existing task to
+reach a terminal state. This prevents a worker from hanging forever on work
+left by a previous process; timed-out items are marked failed for resubmission.
+
+Transient adapter failures (timeouts, connection errors, 429/5xx) are retried
+up to two times per batch item. Invalid parameters, credentials, share codes,
+permissions and missing folders are treated as permanent failures.
+
 ## Share Code And Receive Code
 
 `shareCode` is the 115 share id in the share URL path.
